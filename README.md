@@ -108,3 +108,4 @@ The starter evaluation suite measures retrieval Recall@K, Precision@K, and MRR o
 2. Persist users, datasets, sessions, runs, insights, reports, and evaluations in PostgreSQL; add pgvector retrieval and Redis caching.
 3. Add forecasting/model evaluation, sandboxed worker execution, authentication, and production rate limits.
 4. Add export PDF, mobile QA, and deployment CI gates.
+# Argus-Ai
