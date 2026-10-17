@@ -38,6 +38,35 @@ export type Dataset = {
   };
 };
 
+export type KnowledgeDocument = {
+  id: string; filename: string; byte_size: number; char_count: number;
+  status: string; created_at: string; chunks: number;
+};
+
+export type KnowledgeSearchResult = {
+  question: string; status: "insufficient_evidence" | "evidence_only" | "answered" | "provider_error" | "citation_rejected";
+  answer: string | null; explanation: string;
+  supported_facts: { claim: string; citation_ids: string[] }[];
+  inferences: { claim: string; citation_ids: string[] }[];
+  conflicts: { claim: string; citation_ids: string[] }[];
+  unanswered_questions: string[]; rejected_claims: { category: string; reason: string }[];
+  citation_validation: { valid: boolean; accepted_claims: number; rejected_claims: number; note: string };
+  provider: string; model: string;
+  retrieval: { method: string; max_passages: number; context_char_limit: number; returned_passages: number; syntactic_score_is_not_semantic_confidence: boolean };
+  trace: { stage: string; status: string; duration_ms?: number; passages?: number; provider?: string; model?: string }[];
+  evidence: { citation_id: string; document_id: string; chunk_id: string; source: string;
+    version: string; excerpt: string; start_char: number; end_char: number;
+    retrieval_score: number; method: string }[];
+};
+
+export type KnowledgeEvaluation = {
+  dataset: string; case_count: number; k: number;
+  cases: { id: string; ranked_evidence_ids: string[]; expected_evidence_ids: string[]; relevant_ranks: number[]; precision_at_3: number; reciprocal_rank: number; expected_abstention: boolean; retrieved_nothing: boolean }[];
+  metric_definitions: Record<string, string>;
+  metrics: { recall_at_3: number; precision_at_3_macro: number; mrr_at_3: number; abstention_accuracy: number; citation_reference_acceptance: number | null; fabricated_reference_rejection_rate: number | null };
+  limitations: string[];
+};
+
 export type DatasetPreview = {
   dataset_id: string;
   name: string;
@@ -260,8 +289,21 @@ export type DBConnectPayload = {
   max_records?: number;
 };
 
+type KnowledgeTokenProvider = () => Promise<string | null>;
+let knowledgeTokenProvider: KnowledgeTokenProvider | null = null;
+
+export function setKnowledgeTokenProvider(provider: KnowledgeTokenProvider): void {
+  knowledgeTokenProvider = provider;
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`/api${path}`, { ...init, cache: "no-store" });
+  const headers = new Headers(init?.headers);
+  if (path.startsWith("/knowledge/") && typeof window !== "undefined") {
+    const clerkToken = knowledgeTokenProvider ? await knowledgeTokenProvider() : null;
+    const token = clerkToken || window.sessionStorage.getItem("argus.knowledge.dev-token");
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+  }
+  const response = await fetch(`/api${path}`, { ...init, headers, cache: "no-store" });
   if (!response.ok) {
     const detail = await response.json().catch(() => null);
     throw new Error(detail?.detail ?? `Request failed (${response.status})`);
@@ -272,6 +314,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export const api = {
   health: () => request<APIHealth>("/health"),
   datasets: () => request<Dataset[]>("/datasets"),
+  knowledgeDocuments: () => request<KnowledgeDocument[]>("/knowledge/documents"),
+  uploadKnowledgeDocument: async (file: File) => {
+    const form = new FormData(); form.append("file", file);
+    return request<KnowledgeDocument>("/knowledge/documents", { method: "POST", body: form });
+  },
+  askKnowledge: (question: string) => request<KnowledgeSearchResult>("/knowledge/ask", {
+    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ question }),
+  }),
+  knowledgeEvaluation: () => request<KnowledgeEvaluation>("/knowledge/evaluation"),
   dataset: (id: string) => request<Dataset>(`/datasets/${encodeURIComponent(id)}`),
   overview: (id: string) => request<DatasetOverview>(`/datasets/${encodeURIComponent(id)}/overview`),
   previewData: (id: string, limit = 50, offset = 0) =>

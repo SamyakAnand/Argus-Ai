@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowClockwise, ArrowRight, ArrowUpRight, ChatCircleText, Check, CircleNotch, CloudArrowUp,
@@ -9,7 +10,7 @@ import {
   Table, WarningCircle, X,
 } from "@phosphor-icons/react";
 import { ArgusShell } from "@/components/ArgusShell";
-import { api, type Analysis, type APIHealth, type Dataset, type DatasetPreview, type EvaluationReport, type LineageGraph, type LocalSession } from "@/lib/api";
+import { api, setKnowledgeTokenProvider, type Analysis, type APIHealth, type Dataset, type DatasetPreview, type EvaluationReport, type KnowledgeDocument, type KnowledgeEvaluation, type KnowledgeSearchResult, type LineageGraph, type LocalSession } from "@/lib/api";
 
 const GraphScene = dynamic(() => import("@/components/KnowledgeGraphScene").then(module => module.KnowledgeGraphScene), {
   ssr: false,
@@ -21,7 +22,7 @@ export type ProductPageKey = "overview" | "documents" | "search" | "graph" | "se
 const pageInfo: Record<ProductPageKey, { title: string; eyebrow: string }> = {
   overview: { title: "Overview", eyebrow: "WORKSPACE SIGNAL" },
   documents: { title: "Documents", eyebrow: "DATA LIBRARY" },
-  search: { title: "Intelligence Search", eyebrow: "ANALYTICAL QUERY" },
+  search: { title: "Evidence Search", eyebrow: "SOURCE EVIDENCE" },
   graph: { title: "Knowledge Graph", eyebrow: "SOURCE LINEAGE" },
   sessions: { title: "Research Sessions", eyebrow: "LOCAL HISTORY" },
   evaluation: { title: "Evaluation Lab", eyebrow: "QUALITY MEASUREMENT" },
@@ -30,12 +31,18 @@ const pageInfo: Record<ProductPageKey, { title: string; eyebrow: string }> = {
 };
 
 export function ArgusProductPage({ page }: { page: ProductPageKey }) {
+  const { getToken } = useAuth();
+  setKnowledgeTokenProvider(getToken);
   const info = pageInfo[page];
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [health, setHealth] = useState<APIHealth | null>(null);
   const [lineage, setLineage] = useState<LineageGraph | null>(null);
   const [sessions, setSessions] = useState<LocalSession[]>([]);
   const [evaluation, setEvaluation] = useState<EvaluationReport | null>(null);
+  const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
+  const [knowledgeSearch, setKnowledgeSearch] = useState<KnowledgeSearchResult | null>(null);
+  const [knowledgeEvaluation, setKnowledgeEvaluation] = useState<KnowledgeEvaluation | null>(null);
+  const [documentQuery, setDocumentQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState<DatasetPreview | null>(null);
@@ -48,6 +55,7 @@ export function ArgusProductPage({ page }: { page: ProductPageKey }) {
   const [filter, setFilter] = useState("");
   const [sessionFilter, setSessionFilter] = useState("");
   const uploadRef = useRef<HTMLInputElement>(null);
+  const documentUploadRef = useRef<HTMLInputElement>(null);
 
   const loadDatasets = useCallback(async () => {
     const items = await api.datasets();
@@ -59,9 +67,14 @@ export function ArgusProductPage({ page }: { page: ProductPageKey }) {
   useEffect(() => {
     let alive = true;
     setLoading(true); setError("");
+    if (page === "documents") setDocuments([]);
+    if (page === "search") { setKnowledgeSearch(null); setKnowledgeEvaluation(null); }
     const load = async () => {
       try {
-        if (["overview", "documents", "search"].includes(page)) await loadDatasets();
+        if (["overview", "documents"].includes(page)) await loadDatasets();
+        if (page === "documents") {
+          const result = await api.knowledgeDocuments(); if (alive) setDocuments(result);
+        }
         if (["overview", "models"].includes(page)) {
           try { const result = await api.health(); if (alive) setHealth(result); }
           catch { if (alive) setHealth(null); }
@@ -111,6 +124,33 @@ export function ArgusProductPage({ page }: { page: ProductPageKey }) {
     finally { setBusy(false); }
   };
 
+  const uploadDocument = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]; if (!file) return;
+    setBusy(true); setError(""); setUploadMessage("");
+    try {
+      const result = await api.uploadKnowledgeDocument(file);
+      setDocuments(current => [result, ...current.filter(item => item.id !== result.id)]);
+      setUploadMessage(`${result.filename} indexed as ${result.chunks} searchable passage${result.chunks === 1 ? "" : "s"}.`);
+    } catch (cause) { setError(cause instanceof Error ? cause.message : "Document ingestion failed."); }
+    finally { setBusy(false); event.target.value = ""; }
+  };
+
+  const searchKnowledge = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); if (documentQuery.trim().length < 2) return;
+    setBusy(true); setError("");
+      setKnowledgeSearch(null); setKnowledgeEvaluation(null);
+      try { setKnowledgeSearch(await api.askKnowledge(documentQuery.trim())); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "ARGUS could not complete this question. Check that the knowledge API is available."); }
+    finally { setBusy(false); }
+  };
+
+  const runKnowledgeEvaluation = async () => {
+    setBusy(true); setError(""); setKnowledgeEvaluation(null);
+    try { setKnowledgeEvaluation(await api.knowledgeEvaluation()); }
+    catch (cause) { setError(cause instanceof Error ? cause.message : "The knowledge evaluation fixture is unavailable."); }
+    finally { setBusy(false); }
+  };
+
   const runEvaluation = async () => {
     setBusy(true); setError("");
     try { setEvaluation(await api.evaluate()); }
@@ -123,18 +163,35 @@ export function ArgusProductPage({ page }: { page: ProductPageKey }) {
 
   return <ArgusShell active={page === "overview" ? "/overview" : page === "documents" ? "/documents" : page === "search" ? "/search" : page === "graph" ? "/graph" : page === "sessions" ? "/sessions" : page === "evaluation" ? "/evaluation" : page === "models" ? "/models" : "/settings"} title={info.title} eyebrow={info.eyebrow}>
     {error && <div className="argus-error-banner" role="alert"><WarningCircle size={16} /><span>{error}</span><button onClick={() => setError("")} aria-label="Dismiss error"><X size={14} /></button></div>}
+    {["documents", "search"].includes(page) && <KnowledgeAuthPanel />}
     {page === "overview" && <OverviewPage datasets={datasets} health={health} loading={loading} error={error} />}
-    {page === "documents" && <DocumentsPage datasets={filteredDatasets} total={datasets.length} filter={filter} onFilter={setFilter} onUpload={() => uploadRef.current?.click()} onPreview={id => void openPreview(id)} loading={loading} busy={busy} uploadMessage={uploadMessage} />}
-    {page === "search" && <SearchPage datasets={datasets} loading={loading} selectedDatasetId={selectedDatasetId} setSelectedDatasetId={setSelectedDatasetId} query={query} setQuery={setQuery} analysis={analysis} busy={busy} onSubmit={event => void runSearch(event)} />}
+    {page === "documents" && <DocumentsPage datasets={filteredDatasets} total={datasets.length} documents={documents} filter={filter} onFilter={setFilter} onUpload={() => documentUploadRef.current?.click()} onDatasetUpload={() => uploadRef.current?.click()} onPreview={id => void openPreview(id)} loading={loading} busy={busy} uploadMessage={uploadMessage} />}
+    {page === "search" && <KnowledgeSearchPage query={documentQuery} setQuery={setDocumentQuery} result={knowledgeSearch} evaluation={knowledgeEvaluation} busy={busy} onSubmit={event => void searchKnowledge(event)} onEvaluate={() => void runKnowledgeEvaluation()} />}
     {page === "graph" && <GraphPage graph={lineage} loading={loading} error={error} />}
     {page === "sessions" && <SessionsPage sessions={filteredSessions} total={sessions.length} filter={sessionFilter} onFilter={setSessionFilter} loading={loading} />}
     {page === "evaluation" && <EvaluationPage report={evaluation} busy={busy} onRun={() => void runEvaluation()} />}
     {page === "models" && <ModelsPage health={health} loading={loading} />}
     {page === "settings" && <SettingsPage />}
     {(page === "documents" || page === "overview") && <input ref={uploadRef} className="sr-only" type="file" accept=".csv,.xlsx,.json" onChange={event => void upload(event)} aria-label="Upload CSV, XLSX or JSON dataset" />}
+    {page === "documents" && <input ref={documentUploadRef} className="sr-only" type="file" accept=".txt,.md,.markdown,text/plain,text/markdown" onChange={event => void uploadDocument(event)} aria-label="Upload a Markdown or text document" />}
     {preview && <DatasetPreviewDialog preview={preview} onClose={() => setPreview(null)} />}
     {previewError && <div className="argus-toast" role="status">{previewError}<button onClick={() => setPreviewError("")} aria-label="Dismiss"><X size={14} /></button></div>}
   </ArgusShell>;
+}
+
+function KnowledgeAuthPanel() {
+  const [token, setToken] = useState("");
+  useEffect(() => { setToken(window.sessionStorage.getItem("argus.knowledge.dev-token") ?? ""); }, []);
+  const update = (value: string) => {
+    setToken(value);
+    if (value) window.sessionStorage.setItem("argus.knowledge.dev-token", value);
+    else window.sessionStorage.removeItem("argus.knowledge.dev-token");
+  };
+  return <form className="argus-prototype-note argus-auth-note" aria-label="Local development authentication" onSubmit={event => { event.preventDefault(); if (token.trim()) window.location.reload(); }}>
+    <ShieldCheck size={16} /><label htmlFor="argus-dev-token"><strong>Local token fallback</strong><span>Clerk sign-in is preferred; this token is a local-only fallback stored in this tab.</span></label>
+    <input id="argus-dev-token" type="password" autoComplete="off" value={token} onChange={event => update(event.target.value)} placeholder="Paste configured bearer token" aria-label="Local development knowledge bearer token" />
+    <button type="submit" className="argus-button-secondary" disabled={!token.trim()}>Connect</button>
+  </form>;
 }
 
 function saveSession(result: Analysis) {
@@ -151,11 +208,11 @@ function OverviewPage({ datasets, health, loading, error }: { datasets: Dataset[
   const cards = [
     { label: "Local datasets", value: loading ? "—" : String(datasets.length), note: "Visible to this local API", icon: Database, state: "measured" },
     { label: "Rows available", value: loading ? "—" : rowCount.toLocaleString(), note: "Across loaded dataset profiles", icon: Table, state: "measured" },
-    { label: "Retrieval quality", value: "Unavailable", note: "No semantic retrieval endpoint", icon: MagnifyingGlass, state: "unavailable" },
+    { label: "Document search", value: "Local lexical", note: "Exact text passages; no embeddings", icon: MagnifyingGlass, state: "unavailable" },
     { label: "p95 query latency", value: "Unavailable", note: "No latency aggregation endpoint", icon: Gauge, state: "unavailable" },
   ];
   return <div className="argus-page-stack">
-    <section className="argus-welcome-card"><div><span className="argus-eyebrow">LOCAL WORKSPACE SNAPSHOT</span><h2>Find the signal.<br /><em>Keep the trail.</em></h2><p>ARGUS connects data analysis, lineage, and evidence review. The current build reads the local Nexus analytics API.</p><Link className="argus-button-primary" href="/workspace">Open knowledge workspace <ArrowRight size={15} /></Link></div><div className="argus-welcome-orbit" aria-hidden="true"><Eye size={68} weight="thin" /><span /><i /></div></section>
+    <section className="argus-welcome-card"><div><span className="argus-eyebrow">LOCAL KNOWLEDGE SNAPSHOT</span><h2>Find the signal.<br /><em>Keep the trail.</em></h2><p>Search source text and inspect the exact passages behind each result. Structured-data analysis remains a separate legacy workspace.</p><Link className="argus-button-primary" href="/search">Search document evidence <ArrowRight size={15} /></Link></div><div className="argus-welcome-orbit" aria-hidden="true"><Eye size={68} weight="thin" /><span /><i /></div></section>
     <div className="argus-metric-grid">{cards.map(({ label, value, note, icon: Icon, state }) => <article className={`argus-metric-card ${state}`} key={label}><span className="argus-metric-icon"><Icon size={17} /></span><small>{label}</small><strong>{value}</strong><p>{note}</p></article>)}</div>
     <div className="argus-overview-grid"><section className="argus-panel"><div className="argus-panel-heading"><div><span className="argus-eyebrow">CURRENT INVENTORY</span><h2>Data sources</h2></div><Link href="/documents">Browse library <ArrowRight size={14} /></Link></div>{loading ? <LoadingState label="Reading dataset inventory…" /> : error ? <EmptyState icon={<WarningCircle size={18} />} title="API unavailable" detail="Dataset counts are not shown until the local API responds." /> : datasets.length ? datasets.slice(0, 5).map(item => <Link className="argus-source-row" href="/documents" key={item.id}><span><Database size={16} /></span><strong>{item.name}</strong><small>{item.profile.row_count.toLocaleString()} rows · {item.profile.column_count} fields</small><ArrowRight size={14} /></Link>) : <EmptyState icon={<Database size={18} />} title="No datasets yet" detail="Upload a supported dataset to begin." action={<Link href="/documents">Open documents <ArrowRight size={13} /></Link>} />}</section>
       <section className="argus-panel"><div className="argus-panel-heading"><div><span className="argus-eyebrow">SERVICE INDICATORS</span><h2>What is connected</h2></div><Link href="/models">Details <ArrowRight size={14} /></Link></div><StatusLine label="API process" value={health?.status === "ok" ? "Responding" : loading ? "Checking" : "Unavailable"} tone={health?.status === "ok" ? "good" : "muted"} /><StatusLine label="Database type" value={health?.database ?? "Not reported"} tone="muted" /><StatusLine label="Knowledge retrieval" value="Not implemented" tone="muted" /><StatusLine label="Authentication" value="Not configured" tone="warn" /><p className="argus-panel-note">This status reflects the local prototype. It does not indicate a production deployment.</p></section></div>
@@ -163,8 +220,36 @@ function OverviewPage({ datasets, health, loading, error }: { datasets: Dataset[
   </div>;
 }
 
-function DocumentsPage({ datasets, total, filter, onFilter, onUpload, onPreview, loading, busy, uploadMessage }: { datasets: Dataset[]; total: number; filter: string; onFilter: (value: string) => void; onUpload: () => void; onPreview: (id: string) => void; loading: boolean; busy: boolean; uploadMessage: string }) {
-  return <div className="argus-page-stack"><div className="argus-page-actions"><label className="argus-filter"><MagnifyingGlass size={15} /><input value={filter} onChange={event => onFilter(event.target.value)} placeholder="Filter datasets" aria-label="Filter datasets" /></label><button className="argus-button-primary" onClick={onUpload} disabled={busy}>{busy ? <CircleNotch className="spin" size={15} /> : <CloudArrowUp size={16} />}{busy ? "Uploading…" : "Upload dataset"}</button></div><div className="argus-prototype-note"><InfoIcon /><span><strong>Current scope:</strong> CSV, XLSX, and JSON datasets. PDF, image, OCR, and enterprise document indexing are not implemented in this build.</span></div>{uploadMessage && <div className="argus-success-banner" role="status"><Check size={15} />{uploadMessage}</div>}<section className="argus-panel argus-document-panel"><div className="argus-table-head"><span>{loading ? "Loading library" : `${total} local dataset${total === 1 ? "" : "s"}`}</span><span>FORMAT</span><span>ROWS</span><span>FIELDS</span><span /></div>{loading ? <LoadingState label="Reading datasets…" /> : datasets.length ? datasets.map(item => <article className="argus-document-row" key={item.id}><span className="argus-document-symbol"><FileText size={17} /></span><div><strong>{item.name}</strong><small>{item.filename} · {item.source} · {item.profile.missing_cells.toLocaleString()} missing cells</small></div><span className="argus-format-chip">{item.format.toUpperCase()}</span><span className="argus-row-number">{item.profile.row_count.toLocaleString()}</span><span className="argus-row-number">{item.profile.column_count}</span><button className="argus-icon-button" onClick={() => onPreview(item.id)} aria-label={`Preview ${item.name}`}><ArrowUpRight size={16} /></button></article>) : <EmptyState icon={<Files size={18} />} title="No matching datasets" detail="The library only lists data returned by the local API." />}</section></div>;
+function DocumentsPage({ datasets, total, documents, filter, onFilter, onUpload, onDatasetUpload, onPreview, loading, busy, uploadMessage }: { datasets: Dataset[]; total: number; documents: KnowledgeDocument[]; filter: string; onFilter: (value: string) => void; onUpload: () => void; onDatasetUpload: () => void; onPreview: (id: string) => void; loading: boolean; busy: boolean; uploadMessage: string }) {
+  const visible = documents.filter(item => item.filename.toLowerCase().includes(filter.toLowerCase()));
+  return <div className="argus-page-stack"><div className="argus-page-actions"><label className="argus-filter"><MagnifyingGlass size={15} /><input value={filter} onChange={event => onFilter(event.target.value)} placeholder="Filter library" aria-label="Filter knowledge library" /></label><button className="argus-button-primary" onClick={onUpload} disabled={busy}>{busy ? <CircleNotch className="spin" size={15} /> : <CloudArrowUp size={16} />}{busy ? "Indexing…" : "Add knowledge document"}</button></div><div className="argus-prototype-note"><InfoIcon /><span><strong>Knowledge library:</strong> Markdown and UTF-8 text are persisted locally and split into source passages. A local development token scopes documents; production identity, embeddings, PDF/DOCX parsing, OCR, and remote durable storage are not implemented.</span></div>{uploadMessage && <div className="argus-success-banner" role="status"><Check size={15} />{uploadMessage}</div>}<section className="argus-panel argus-document-panel"><div className="argus-panel-heading"><div><span className="argus-eyebrow">SOURCE DOCUMENTS</span><h2>{visible.length} indexed document{visible.length === 1 ? "" : "s"}</h2></div></div>{loading ? <LoadingState label="Reading document index…" /> : visible.length ? visible.map(item => <article className="argus-document-row" key={item.id}><span className="argus-document-symbol"><FileText size={17} /></span><div><strong>{item.filename}</strong><small>{item.char_count.toLocaleString()} characters · {item.chunks} passages · added {new Date(item.created_at).toLocaleString()}</small></div><span className="argus-format-chip">{item.status}</span></article>) : <EmptyState icon={<Files size={18} />} title="No knowledge documents yet" detail="Add a Markdown or plain text file to create a persistent, searchable source." />}</section><section className="argus-panel argus-document-panel"><div className="argus-panel-heading"><div><span className="argus-eyebrow">STRUCTURED DATA · SEPARATE FROM KNOWLEDGE</span><h2>{total} dataset{total === 1 ? "" : "s"}</h2></div><button className="argus-button-secondary" onClick={onDatasetUpload} disabled={busy}>Add dataset</button></div>{datasets.map(item => <article className="argus-document-row" key={item.id}><span className="argus-document-symbol"><Database size={17} /></span><div><strong>{item.name}</strong><small>{item.filename} · {item.profile.row_count.toLocaleString()} rows</small></div><button className="argus-icon-button" onClick={() => onPreview(item.id)} aria-label={`Preview ${item.name}`}><ArrowUpRight size={16} /></button></article>)}</section></div>;
+}
+
+function KnowledgeSearchPage({ query, setQuery, result, evaluation, busy, onSubmit, onEvaluate }: { query: string; setQuery: (value: string) => void; result: KnowledgeSearchResult | null; evaluation: KnowledgeEvaluation | null; busy: boolean; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void; onEvaluate: () => void }) {
+  const anchorFor = (citation: string) => `evidence-${citation.replace(/[^a-zA-Z0-9_-]/g, "")}`;
+  return <div className="argus-search-page">
+    <div className="argus-search-callout"><span className="argus-eyebrow">ASK ARGUS · SOURCE-GROUNDED</span><p>Ask about indexed Markdown and text. ARGUS retrieves bounded passages first. Model synthesis is opt-in; without it, the result contains evidence only. Citation checks verify passage IDs, not semantic entailment.</p></div>
+    <form className="argus-query-form" onSubmit={onSubmit}><label htmlFor="argus-query">What do you need to verify?</label><textarea id="argus-query" value={query} onChange={event => setQuery(event.target.value)} placeholder="Ask about a policy, decision, owner, or source…" rows={3} /><div className="argus-query-toolbar"><span>Local lexical retrieval · no outside knowledge</span><button className="argus-button-primary" disabled={busy || query.trim().length < 2}>{busy ? <CircleNotch className="spin" size={15} /> : <ArrowRight size={15} />}{busy ? "Investigating…" : "Ask ARGUS"}</button></div></form>
+    {!result ? <div className="argus-search-empty"><span><MagnifyingGlass size={22} /></span><strong>Investigate a question against source text</strong><p>Upload a .md or .txt file in Documents. ARGUS will show passages and their locations even when answer generation is unavailable.</p></div> : <section className="argus-analysis-result" aria-live="polite">
+      <div className={`argus-result-heading argus-answer-${result.status}`}><span><Files size={15} />{result.status === "answered" ? "Evidence-linked answer" : result.status === "evidence_only" ? "Evidence retrieved · no generated answer" : result.status === "provider_error" ? "Answer provider unavailable" : result.status === "citation_rejected" ? "Claims rejected · citations invalid" : "Insufficient evidence"}</span><small>{result.provider} · {result.model}</small></div>
+      <p>{result.explanation}</p>
+      {result.answer && <div className="argus-prototype-note"><strong>{result.answer}</strong></div>}
+      {result.supported_facts.length > 0 && <CitationClaims title="Supported facts" items={result.supported_facts} anchorFor={anchorFor} />}
+      {result.inferences.length > 0 && <CitationClaims title="Inferences" items={result.inferences} anchorFor={anchorFor} />}
+      {result.conflicts.length > 0 && <CitationClaims title="Conflicting evidence" items={result.conflicts} anchorFor={anchorFor} />}
+      {result.unanswered_questions.length > 0 && <section className="argus-panel" style={{ marginTop: 12 }}><h3>Unanswered</h3><ul>{result.unanswered_questions.map((item, i) => <li key={`${i}-${item}`}>{item}</li>)}</ul></section>}
+      {result.rejected_claims.length > 0 && <div className="argus-error-banner" role="status"><WarningCircle size={16} /><span>{result.rejected_claims.length} provider claim(s) were omitted because they had malformed or unavailable citations.</span></div>}
+      <div className="argus-prototype-note"><ShieldCheck size={15} />Citation ID check: {result.citation_validation.valid ? "passed" : "some claims rejected"}. This verifies references exist in this result only; it does not prove semantic support.</div>
+      <div className="argus-panel-heading" style={{ marginTop: 22 }}><div><span className="argus-eyebrow">RETRIEVED EVIDENCE</span><h2>{result.evidence.length} source passage{result.evidence.length === 1 ? "" : "s"}</h2></div></div>
+      {result.evidence.map(item => <article className="argus-panel" id={anchorFor(item.citation_id)} tabIndex={-1} key={item.chunk_id} style={{ marginTop: 12 }}><div className="argus-result-heading"><span><FileText size={15} />{item.citation_id} · {item.source}</span><small>Characters {item.start_char}–{item.end_char} · lexical score {item.retrieval_score}</small></div><p>{item.excerpt}</p><small>Document {item.document_id} · passage {item.chunk_id} · version {item.version} · {item.method}</small></article>)}
+      <details style={{ marginTop: 14 }}><summary>Execution trace and retrieval limits</summary><p>{result.retrieval.method}; {result.retrieval.returned_passages}/{result.retrieval.max_passages} passages, context ≤ {result.retrieval.context_char_limit.toLocaleString()} characters.</p><ul>{result.trace.map((step, i) => <li key={`${step.stage}-${i}`}>{step.stage}: {step.status}{step.duration_ms == null ? "" : ` · ${step.duration_ms} ms`}</li>)}</ul></details>
+    </section>}
+    <section className="argus-panel" style={{ marginTop: 20 }}><div className="argus-panel-heading"><div><span className="argus-eyebrow">OFFLINE QUALITY CHECK</span><h2>Knowledge evaluation</h2></div><button className="argus-button-secondary" onClick={onEvaluate} disabled={busy}>{busy ? "Running…" : "Run v1 fixture"}</button></div>{evaluation && <><p>{evaluation.dataset} · {evaluation.case_count} synthetic cases · top {evaluation.k}</p><div className="argus-result-findings">{Object.entries(evaluation.metrics).map(([name, value]) => <article key={name}><strong>{name.replaceAll("_", " ")}</strong><p>{value == null ? "N/A" : value.toFixed(3)}</p></article>)}</div>{evaluation.limitations.map(note => <small key={note} style={{ display: "block", marginTop: 6 }}>{note}</small>)}</>}</section>
+  </div>;
+}
+
+function CitationClaims({ title, items, anchorFor }: { title: string; items: { claim: string; citation_ids: string[] }[]; anchorFor: (citation: string) => string }) {
+  return <section className="argus-panel" style={{ marginTop: 12 }}><h3>{title}</h3>{items.map((item, index) => <p key={`${index}-${item.claim}`}>{item.claim}{" "}{item.citation_ids.map((citation, citationIndex) => <a key={`${citation}-${citationIndex}`} href={`#${anchorFor(citation)}`} aria-label={`Open evidence ${citation}`}>{citation}{citationIndex < item.citation_ids.length - 1 ? " " : ""}</a>)}</p>)}</section>;
 }
 
 function SearchPage({ datasets, loading, selectedDatasetId, setSelectedDatasetId, query, setQuery, analysis, busy, onSubmit }: { datasets: Dataset[]; loading: boolean; selectedDatasetId: string; setSelectedDatasetId: (value: string) => void; query: string; setQuery: (value: string) => void; analysis: Analysis | null; busy: boolean; onSubmit: (event: React.FormEvent<HTMLFormElement>) => void }) {
@@ -194,13 +279,13 @@ function ModelsPage({ health, loading }: { health: APIHealth | null; loading: bo
 
 function SettingsPage() {
   const settings = [
-    ["Workspace mode", "Local prototype", "No identity provider is connected."],
+    ["Workspace mode", "Clerk development auth", "Production identity settings are not configured."],
     ["Data access", "Local API", "Uploaded files are sent to the configured FastAPI service."],
     ["Supported dataset uploads", "CSV · XLSX · JSON", "Other file types and document OCR are not offered in this UI."],
     ["Knowledge retrieval", "Unavailable", "Embeddings, BM25, RRF, and document citations are not implemented."],
     ["Model routing", "Configured state only", "The interface does not test provider inference or reveal credentials."],
   ];
-  return <div className="argus-page-stack"><div className="argus-settings-intro"><span><Gear size={22} /></span><div><h2>Workspace configuration</h2><p>These values describe what the current frontend and API expose. This page cannot change deployment secrets or tenant policies.</p></div></div><section className="argus-panel">{settings.map(([label, value, note]) => <div className="argus-setting-row" key={label}><span><strong>{label}</strong><small>{note}</small></span><em>{value}</em></div>)}</section><div className="argus-warning-panel"><WarningCircle size={17} /><p><strong>Security boundary:</strong> authentication, authorization, and tenant isolation are not implemented in the current API. Do not use this prototype for sensitive or multi-tenant data.</p></div></div>;
+  return <div className="argus-page-stack"><div className="argus-settings-intro"><span><Gear size={22} /></span><div><h2>Workspace configuration</h2><p>These values describe what the current frontend and API expose. This page cannot change deployment secrets or tenant policies.</p></div></div><section className="argus-panel">{settings.map(([label, value, note]) => <div className="argus-setting-row" key={label}><span><strong>{label}</strong><small>{note}</small></span><em>{value}</em></div>)}</section><div className="argus-warning-panel"><WarningCircle size={17} /><p><strong>Security boundary:</strong> Clerk sessions scope the knowledge routes in this development setup. Production credentials, durable tenant isolation, audit controls, and the legacy structured-data API remain outside this integration. Do not use this prototype for sensitive data.</p></div></div>;
 }
 
 function DatasetPreviewDialog({ preview, onClose }: { preview: DatasetPreview; onClose: () => void }) {

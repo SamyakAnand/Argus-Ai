@@ -2,9 +2,9 @@
 
 # ARGUS AI
 
-### Turn business data into answers you can inspect.
+### Find organizational evidence. Keep the source trail.
 
-An interactive analytics prototype for exploring tabular data, asking questions in plain language, and tracing findings back to calculations and source columns.
+An early enterprise knowledge prototype with a local text-document library and source-passage search. A separate legacy workspace still demonstrates structured-data analytics.
 
 [![CI](https://github.com/SamyakAnand/Argus-Ai/actions/workflows/ci.yml/badge.svg)](https://github.com/SamyakAnand/Argus-Ai/actions/workflows/ci.yml)
 ![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=next.js)
@@ -21,18 +21,18 @@ An interactive analytics prototype for exploring tabular data, asking questions 
 
 ---
 
-> **Project status:** Development preview. The ARGUS interface currently wraps a tabular data analysis engine. It is not a document RAG platform and is not ready for sensitive or multi-tenant workloads.
+> **Project status:** Development preview. ARGUS can index UTF-8 Markdown/text locally and retrieve passages with exact source offsets. Optional answer synthesis is disabled by default and uses the existing configured provider only after explicit opt-in. Citation checks verify passage IDs, not semantic entailment. Not ready for sensitive or multi-tenant workloads.
 
 ## ✨ What you can do
 
 | Area | Try it | What happens |
 | --- | --- | --- |
-| **Analyze** | `/workspace` | Ask a question about a dataset and inspect the selected analysis steps, results, and evidence. |
-| **Explore data** | `/documents` | Upload and inspect CSV, JSON, or XLSX datasets, including their schema and data quality profile. |
-| **Search** | `/search` | Submit a question to the current analysis engine. |
-| **Follow lineage** | `/graph` | View detected source relationships and data lineage. |
+| **Knowledge library** | `/documents` | Ingest Markdown/UTF-8 text as local passages; structured datasets are shown separately. |
+| **Ask ARGUS** | `/search` | Retrieve source passages and, only when explicitly enabled with a provider, generate structured claims with citation-ID checks. |
+| **Analyze · legacy** | `/workspace` | Explore a separate structured-data analytics prototype and its calculation traces. |
+| **Follow data lineage** | `/graph` | View detected relationships between structured sources; this is not a document knowledge graph. |
 | **Evaluate** | `/evaluation` | Run the small, deterministic fixture evaluation suite. |
-| **Review runs** | `/sessions` | Revisit analysis sessions saved in this browser. |
+| **Review runs** | `/sessions` | Revisit legacy analysis sessions saved in this browser. |
 
 Other areas: [`/overview`](apps/web/src/app/overview/page.tsx), [`/models`](apps/web/src/app/models/page.tsx), and [`/settings`](apps/web/src/app/settings/page.tsx).
 
@@ -61,46 +61,72 @@ flowchart LR
 - Python 3.11 or newer
 - Node.js 20 or newer and npm
 
-### 1. Start the API
+For the verified ARGUS knowledge API and web app configuration, use the two-terminal procedure below. The generic API proxy defaults to port 8000, so explicitly configure `BACKEND_URL` to the port where this ARGUS API is running.
 
-From the repository root:
+### Verified local ARGUS knowledge workflow (PowerShell)
+
+The checked-in Next proxy defaults to port `8000`, which may be owned by another local service. The existing workspace used port `8010` for an older ARGUS API without the knowledge routes. For a clean local run, use a confirmed free port such as `8012`; inspect listeners first and choose another free port if needed. Do not stop an unknown listener.
+
+Terminal 1, from the repository root:
 
 ```powershell
-python -m venv .venv
+py -3 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install -r apps/api/requirements.txt
-Copy-Item .env.example .env
-uvicorn nexus_api.main:app --app-dir apps/api --reload --port 8000
+$env:ARGUS_KNOWLEDGE_DEV_TOKENS_JSON = '{"local-development":"replace-with-a-long-random-local-token"}'
+$env:ARGUS_KNOWLEDGE_DIR = "$PWD/data/argus-knowledge-local"
+python -m uvicorn nexus_api.main:app --app-dir apps/api --host 127.0.0.1 --port 8012
 ```
 
-If your Windows Python launcher is `py`, replace `python` with `py -3` in the first three commands. The API and interactive docs will be available at [localhost:8000](http://localhost:8000) and [localhost:8000/docs](http://localhost:8000/docs).
-
-### 2. Start the web app
-
-In a second terminal:
+Terminal 2:
 
 ```powershell
 cd apps/web
 npm ci
-npm run dev
+$env:BACKEND_URL = "http://127.0.0.1:8012"
+npm run dev -- --port 3002
 ```
 
-Open [localhost:3000](http://localhost:3000).
+Open [localhost:3002/documents](http://localhost:3002/documents) or [localhost:3002/search](http://localhost:3002/search), paste the same local token into the access field, then upload and ask questions. The token map is server configuration; principal names are chosen server-side and are never accepted from request parameters. Use distinct random tokens per local principal. The adapter refuses to run when `VERCEL` is set. It provides no account lifecycle, secure session issuance, identity proofing, key rotation, rate limiting, or production tenant administration.
 
-<details>
-<summary><strong>Using a different API port</strong></summary>
+### Clerk development authentication
 
-If port `8000` is occupied, start the API on `8010`:
+ARGUS now supports Clerk sessions for the knowledge API. The Clerk CLI created an accountless, claimable development application and stored its keys in ignored `apps/web/.env.local`; sensitive claim metadata is also kept under ignored `apps/web/.clerk/`. Sign-in and sign-up pages are at `/sign-in` and `/sign-up`. The API loads local keys only outside Vercel, verifies session tokens with Clerk's Python backend SDK, and scopes knowledge rows using the verified user ID. Existing local-token credentials and `local-development` documents remain separate; nothing is automatically reassigned.
+
+For a clean local run, first check that ports `8013` and `3003` are free. In Terminal 1, from the repository root:
 
 ```powershell
-uvicorn nexus_api.main:app --app-dir apps/api --reload --port 8010
+$env:CLERK_AUTHORIZED_PARTIES = "http://localhost:3003,http://127.0.0.1:3003"
+$env:ARGUS_KNOWLEDGE_DIR = "$PWD/data/argus-knowledge-clerk-local"
+py -3 -m uvicorn nexus_api.main:app --app-dir apps/api --host 127.0.0.1 --port 8013
+```
+
+In Terminal 2:
+
+```powershell
+cd apps/web
+$env:BACKEND_URL = "http://127.0.0.1:8013"
+npm run dev -- --port 3003
+```
+
+Open [localhost:3003/sign-up](http://localhost:3003/sign-up) to create a development user, then use the knowledge library and evidence search. If you use another frontend origin, add it to the API's comma-separated `CLERK_AUTHORIZED_PARTIES`. To claim the temporary Clerk application for dashboard management, run `npx -y clerk@latest auth login` yourself. Do not copy development keys into source files, commit them, or reuse them for production. Vercel production credentials and allowed origins still need to be configured; durable multi-user storage and the legacy structured-data API's authorization are not covered by this integration.
+
+For PowerShell port ownership checks, run `Get-NetTCPConnection -State Listen | Where-Object LocalPort -in 3000,3001,8000,8010,8012 | Select-Object LocalPort,OwningProcess`; resolve each PID command line before acting on it.
+
+<details>
+<summary><strong>Choosing another free API port</strong></summary>
+
+If `8012` is occupied, first inspect the listener and choose another free port. Start the API and point Next at that same port:
+
+```powershell
+python -m uvicorn nexus_api.main:app --app-dir apps/api --host 127.0.0.1 --port 8013
 ```
 
 Then set the web proxy before starting Next.js:
 
 ```powershell
-$env:BACKEND_URL = "http://127.0.0.1:8010"
-npm run dev
+$env:BACKEND_URL = "http://127.0.0.1:8013"
+npm run dev -- --port 3003
 ```
 
 </details>
@@ -137,6 +163,11 @@ Start with the [web app](apps/web/src/app), [analysis engine](apps/api/nexus_api
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | `GET` | `/health` | API and configured capability status |
+| `POST` | `/knowledge/documents` | Store a Markdown or UTF-8 text knowledge source |
+| `GET` | `/knowledge/documents` | List ingested knowledge sources |
+| `GET` | `/knowledge/search` | Retrieve lexical passages without model synthesis |
+| `POST` | `/knowledge/ask` | Retrieve bounded evidence and optionally synthesize citation-linked claims |
+| `GET` | `/knowledge/evaluation` | Measure the checked-in synthetic v1 retrieval fixture |
 | `POST` | `/datasets/upload` | Upload CSV, JSON, or XLSX |
 | `GET` | `/datasets` | List datasets |
 | `GET` | `/datasets/{id}` | Dataset profile and schema |
@@ -151,7 +182,7 @@ Start with the [web app](apps/web/src/app), [analysis engine](apps/api/nexus_api
 | `POST` | `/sql/query` | Run a read-only query on the active dataset |
 | `POST` | `/evaluations/run` | Run the deterministic fixture evaluation |
 
-OpenAPI UI: [`/docs`](http://localhost:8000/docs) when the API is running.
+OpenAPI UI: [`/docs`](http://127.0.0.1:8012/docs) when using the verified local API port (8012).
 
 </details>
 
@@ -170,17 +201,18 @@ npm run typecheck
 npm run build
 ```
 
-The in-app evaluation is a small deterministic fixture—not a benchmark of semantic or vector retrieval. It reports tool-selection and metadata-ranking measurements; it does not establish answer quality for arbitrary business data.
+The in-app evaluation is a small deterministic fixture—not a benchmark of semantic or vector retrieval. `argus-knowledge-v1` has three positive cases with one expected passage each; all three rank first. The abstention case returns no passage. Macro Precision@3 is 0.250 because each positive case contributes 1/3 and abstention contributes zero: (1/3 + 1/3 + 1/3 + 0)/4. Recall@3 is 1.000 because all three relevant IDs were retrieved (3/3). MRR@3 is 0.750 because the three positive cases contribute 1 each and the abstention case contributes zero (3/4). These ID-based labels do not establish semantic relevance. The endpoint now returns per-case expected IDs, ranking and metric denominator definitions.
 
 ## 🛡️ Honest product boundaries
 
 <details>
 <summary><strong>Read the current limitations</strong></summary>
 
-- Inputs are tabular files: CSV, JSON, and XLSX. PDF, OCR, image, and general document ingestion are not implemented.
-- Search runs the current analysis flow. There is no vector database, BM25 index, hybrid retrieval, or citation-validated document RAG pipeline.
+- The knowledge library accepts Markdown and UTF-8 text, up to 5 MiB. PDF, DOCX, OCR, and image extraction are not implemented. Structured datasets remain a separate legacy feature.
+- Retrieval uses simple lexical term-frequency ranking and returns actual stored passages. There are no embeddings, semantic retrieval, BM25, RRF, or semantic citation entailment validation. Model synthesis is opt-in, can incur provider cost, and is not independently verified.
+- The document SQLite store is local and ephemeral on Vercel; there is no remote durable document store or delete/version lifecycle. Knowledge routes have a local-only bearer adapter; production identity and tenant isolation are not available.
 - Sessions are stored in the current browser; they are not shared account history.
-- Authentication, authorization, and tenant isolation are not implemented. Do not upload confidential or sensitive information.
+- The knowledge API verifies Clerk sessions and scopes documents/passages by the verified user ID; an explicit local bearer adapter remains for development. Production Clerk credentials/origins and durable tenant-scoped storage have not been configured or audited. Do not upload confidential or sensitive information.
 - The local SQL analysis path is read-only, but the broader connector and deployment surface has not had a security review.
 - PostgreSQL/pgvector and Redis appear in the deployment shape, but core API storage is not yet durably backed by them.
 - Optional model-provider settings do not make provider output independently verified. Keep credentials server-side and configure only providers you intend to use.

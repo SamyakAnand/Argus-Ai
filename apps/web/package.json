@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.9.17",
     "@emailjs/browser": "^5.0.2",
     "@phosphor-icons/react": "^2.1.10",
     "@react-three/drei": "^10.7.6",

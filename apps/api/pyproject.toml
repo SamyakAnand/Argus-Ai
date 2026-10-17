@@ -17,6 +17,7 @@ dependencies = [
   "pgvector>=0.3",
   "redis>=5",
   "langgraph>=0.2",
+  "clerk-backend-api>=6.0,<7",
 ]
 
 [tool.vercel]

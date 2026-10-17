@@ -84,7 +84,7 @@ export function Landing() {
         <h1>Your data has answers.<br /><em>ARGUS finds the evidence.</em></h1>
         <p>Turn complex information into intelligence you can inspect. Start with the data-analysis workspace today; expand toward multimodal retrieval with evidence at its core.</p>
         <div className="argus-hero-actions"><Link className="argus-button-primary" href="/workspace">Explore intelligence <ArrowRight size={16} /></Link><a className="argus-button-quiet" href="#how-it-works">See how it works <ArrowDown size={15} /></a></div>
-        <div className="argus-hero-status"><span className={`argus-api-state ${apiState}`}><i />{apiState === "available" ? "Local analysis API connected" : apiState === "unavailable" ? "Local analysis API unavailable" : "Checking local API"}</span><span>Prototype · no authentication</span></div>
+        <div className="argus-hero-status"><span className={`argus-api-state ${apiState}`}><i />{apiState === "available" ? "Local analysis API connected" : apiState === "unavailable" ? "Local analysis API unavailable" : "Checking local API"}</span><span>Prototype · Clerk development sign-in</span></div>
       </div>
       <div className="argus-hero-scene-wrap"><InsightCore /><div className="argus-scene-index">A / 01 <span>OBSERVE · CONNECT · VERIFY</span></div></div>
       <span className="argus-hero-watermark" aria-hidden="true">A</span>

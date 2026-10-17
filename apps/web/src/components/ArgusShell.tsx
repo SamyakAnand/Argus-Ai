@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Show, SignInButton, SignUpButton, UserButton } from "@clerk/nextjs";
 import {
   ArrowRight, Bell, CaretLeft, CaretRight, ChatCircleText, Command, Cpu,
   Database, Eye, Files, Gauge, Gear, Graph, House, MagnifyingGlass, X,
@@ -10,9 +11,9 @@ import {
 
 const destinations = [
   { href: "/overview", label: "Overview", icon: House, detail: "Workspace health and inventory" },
-  { href: "/workspace", label: "Knowledge Workspace", icon: ChatCircleText, detail: "Analyze data with inspectable results" },
-  { href: "/documents", label: "Documents", icon: Files, detail: "Local datasets and uploads" },
-  { href: "/search", label: "Intelligence Search", icon: MagnifyingGlass, detail: "Ask the current analysis engine" },
+  { href: "/workspace", label: "Data Analysis · legacy", icon: ChatCircleText, detail: "Separate structured-data prototype" },
+  { href: "/documents", label: "Knowledge Library", icon: Files, detail: "Markdown and text source passages" },
+  { href: "/search", label: "Evidence Search", icon: MagnifyingGlass, detail: "Search local document passages" },
   { href: "/graph", label: "Knowledge Graph", icon: Graph, detail: "Source lineage and relationships" },
   { href: "/sessions", label: "Research Sessions", icon: Database, detail: "Saved in this browser" },
   { href: "/evaluation", label: "Evaluation Lab", icon: Gauge, detail: "Deterministic fixture evaluation" },
@@ -39,7 +40,6 @@ export function ArgusShell({ active, title, eyebrow, children }: { active: strin
   const [mobileOpen, setMobileOpen] = useState(false);
   const [commandOpen, setCommandOpen] = useState(false);
   const [commandQuery, setCommandQuery] = useState("");
-  const [profileOpen, setProfileOpen] = useState(false);
   const filteredDestinations = useMemo(() => destinations.filter(item => `${item.label} ${item.detail}`.toLowerCase().includes(commandQuery.toLowerCase())), [commandQuery]);
 
   useEffect(() => {
@@ -47,7 +47,7 @@ export function ArgusShell({ active, title, eyebrow, children }: { active: strin
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
         event.preventDefault(); setCommandOpen(true);
       }
-      if (event.key === "Escape") { setCommandOpen(false); setProfileOpen(false); setMobileOpen(false); }
+      if (event.key === "Escape") { setCommandOpen(false); setMobileOpen(false); }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -63,13 +63,13 @@ export function ArgusShell({ active, title, eyebrow, children }: { active: strin
         <button className="argus-mobile-close" aria-label="Close navigation" onClick={() => setMobileOpen(false)}><X size={17} /></button>
       </div>
 
-      {!collapsed && <button className="argus-workspace-switch" onClick={() => setProfileOpen(value => !value)} aria-expanded={profileOpen}><span className="workspace-avatar">A</span><span><strong>Local workspace</strong><small>Personal · prototype</small></span><CaretRight size={14} /></button>}
+      {!collapsed && <div className="argus-workspace-switch"><span className="workspace-avatar">A</span><span><strong>Personal workspace</strong><small>ARGUS AI</small></span><CaretRight size={14} /></div>}
       <div className="argus-nav-label">{collapsed ? "NAV" : "INTELLIGENCE"}</div>
       <ArgusNav active={active} collapsed={collapsed} onNavigate={() => setMobileOpen(false)} />
 
       <div className="argus-sidebar-bottom">
         <div className="argus-local-status"><span className="argus-status-led" /><span>{collapsed ? "LOCAL" : "Local API · status varies"}</span></div>
-        {!collapsed && <p>Prototype mode<br />No sign-in or tenant controls</p>}
+        {!collapsed && <p>Prototype mode<br />Clerk development sign-in</p>}
       </div>
     </aside>
 
@@ -81,9 +81,11 @@ export function ArgusShell({ active, title, eyebrow, children }: { active: strin
           <button className="argus-command-trigger" onClick={() => setCommandOpen(true)}><MagnifyingGlass size={16} /><span>Search pages...</span><kbd>⌘ K</kbd></button>
           <Link className="argus-top-action" href="/workspace"><ChatCircleText size={16} /><span>Open workspace</span></Link>
           <button className="argus-notification" aria-label="No notification center is connected"><Bell size={17} /><i /></button>
-          <button className="argus-profile" onClick={() => setProfileOpen(value => !value)} aria-label="Local profile menu" aria-expanded={profileOpen}><span>SA</span></button>
+          <div className="argus-auth-actions" aria-label="Account">
+            <Show when="signed-out"><SignInButton><button className="argus-auth-button">Sign in</button></SignInButton><SignUpButton><button className="argus-auth-button primary">Create account</button></SignUpButton></Show>
+            <Show when="signed-in"><UserButton /></Show>
+          </div>
         </div>
-        {profileOpen && <div className="argus-profile-popover"><strong>Local prototype</strong><span>Authentication is not connected.</span><Link href="/settings" onClick={() => setProfileOpen(false)}>View available settings <ArrowRight size={13} /></Link></div>}
       </header>
       <main className="argus-content">
         <div className="argus-page-heading"><div><span className="argus-eyebrow">{eyebrow}</span><h1>{title}</h1></div><span className="argus-local-pill"><i /> LOCAL PROTOTYPE</span></div>

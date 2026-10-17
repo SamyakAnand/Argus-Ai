@@ -139,12 +139,17 @@ class OmniRouteGateway:
                         temperature=temperature,
                     )
             except Exception as exc:
+                # HTTP client exceptions may include request URLs, and Gemini embeds
+                # its key in that URL. Log error type/status only; never log exception text.
+                response = getattr(exc, "response", None)
+                status_code = getattr(response, "status_code", None)
                 logger.warning(
-                    "Model call attempt %d failed for %s (%s): %s",
+                    "Model call attempt %d failed for %s (%s): %s (status=%s)",
                     attempt + 1,
                     provider,
                     model,
-                    str(exc),
+                    type(exc).__name__,
+                    status_code,
                 )
                 if attempt == self.max_retries:
                     # If NVIDIA/OmniRoute encounters endpoint-specific failure, try Gemini fallback if available
@@ -159,7 +164,7 @@ class OmniRouteGateway:
                                 temperature=temperature,
                             )
                         except Exception as gemini_exc:
-                            logger.error("Backup Gemini route also failed: %s", str(gemini_exc))
+                            logger.error("Backup Gemini route also failed: %s", type(gemini_exc).__name__)
                     return None, 0, 0.0, model
                 time.sleep(1.0 * (attempt + 1))
 

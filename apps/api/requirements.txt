@@ -13,3 +13,4 @@ pgvector>=0.3
 redis>=5
 langgraph>=0.2
 python-dotenv>=1.0
+clerk-backend-api>=6.0,<7

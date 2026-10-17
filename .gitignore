@@ -2,6 +2,9 @@
 node_modules/
 apps/web/node_modules/
 apps/web/.next/
+apps/web/.next-argus-verification/
+apps/web/.next-argus-dev/
+apps/web/.next-argus-*/
 apps/web/.env.local
 apps/web/tsconfig.tsbuildinfo
 .venv/
@@ -14,6 +17,7 @@ data/logs/
 data/runs/
 data/datasets.json
 data/nexus.db
+data/argus-knowledge/
 dist/
 apps/web/public/qa-reference.png
 apps/web/public/qa-compare*.html

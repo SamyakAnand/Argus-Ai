@@ -10,10 +10,17 @@ import uuid
 from pathlib import Path
 from typing import Any
 
-from dotenv import load_dotenv
+from dotenv import dotenv_values, load_dotenv
 
 load_dotenv()
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+if not os.getenv("VERCEL"):
+    # The accountless Clerk CLI stores local development keys in the web app's
+    # ignored .env.local. Production keys must be supplied by the API runtime.
+    local_web_env = dotenv_values(Path(__file__).resolve().parents[2] / "web" / ".env.local")
+    for key in ("CLERK_SECRET_KEY", "CLERK_JWT_KEY"):
+        if not os.getenv(key) and local_web_env.get(key):
+            os.environ[key] = str(local_web_env[key])
 
 import pandas as pd
 from fastapi import FastAPI, File, HTTPException, Response, UploadFile
@@ -40,6 +47,7 @@ from .db import (
 from .demo import ensure_demo_file
 from .evaluation import CASES, run_evaluation
 from .llm import get_configured_provider
+from .knowledge import router as knowledge_router
 from .profiling import build_dataset_overview, profile_frame
 from .schemas import (
     AnalysisRequest,
@@ -79,6 +87,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+app.include_router(knowledge_router)
 
 
 @app.middleware("http")

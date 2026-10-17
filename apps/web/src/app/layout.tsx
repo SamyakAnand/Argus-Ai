@@ -1,3 +1,4 @@
+import { ClerkProvider } from "@clerk/nextjs";
 import type { Metadata } from "next";
 import "./globals.css";
 import "./argus.css";
@@ -8,5 +9,8 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="en"><body>{children}</body></html>;
+  return <html lang="en"><body><ClerkProvider localization={{
+    signIn: { start: { title: "Sign in to ARGUS AI", subtitle: "Continue to your evidence workspace." } },
+    signUp: { start: { title: "Create your ARGUS AI account", subtitle: "Set up your personal evidence workspace." } },
+  }}>{children}</ClerkProvider></body></html>;
 }
