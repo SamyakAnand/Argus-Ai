@@ -18,3 +18,6 @@ dist/
 apps/web/public/qa-reference.png
 apps/web/public/qa-compare*.html
 .pytest_tmp/
+.vercel
+apps/api/_uv/
+apps/api/uv.lock

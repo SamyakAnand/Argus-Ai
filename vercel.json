@@ -3,19 +3,8 @@
   "services": {
     "api": {
       "root": "apps/api",
-      "framework": "fastapi",
-      "routes": [
-        {
-          "src": "/api/(.*)",
-          "transforms": [
-            {
-              "type": "request.path",
-              "op": "set",
-              "args": "/$1"
-            }
-          ]
-        }
-      ]
+      "runtime": "container",
+      "entrypoint": "Dockerfile.vercel"
     },
     "web": {
       "root": "apps/web",
