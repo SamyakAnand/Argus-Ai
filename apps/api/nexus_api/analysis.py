@@ -555,6 +555,11 @@ def _run_analysis_core(
             answer = f"{deterministic_summary} (Note: Remote model narrative generation was unavailable; verified deterministic calculations and charts are displayed above.)"
     else:
         degraded_mode = True
+        answer = (
+            f"{deterministic_summary} "
+            "(Note: Remote model narrative generation is unavailable because no model provider is configured; "
+            "verified deterministic calculations and charts are displayed above.)"
+        )
 
     trace.append(TraceStep(
         name="insight_synthesis",
