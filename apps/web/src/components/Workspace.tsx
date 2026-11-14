@@ -10,8 +10,6 @@ import {
 } from "@phosphor-icons/react";
 import { FormEvent, useCallback, useEffect, useRef, useState } from "react";
 import { AnalysisChart } from "@/components/AnalysisChart";
-import { DataExplorerModal } from "@/components/DataExplorerModal";
-import { ConnectSourceModal } from "@/components/ConnectSourceModal";
 import { ArgusNav } from "@/components/ArgusShell";
 import { api, type Analysis, type CleaningIssue, type CleaningOperation, type CleaningPreview, type Dataset, type DatasetOverview, type EvaluationReport, type SqlQueryResult, type SuggestedQuestion, type TraceStep } from "@/lib/api";
 

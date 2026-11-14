@@ -192,10 +192,7 @@ def _register(
 
 def _restore() -> None:
     # 1. Initialize DB schema
-    try:
-        init_db()
-    except Exception:
-        pass
+    init_db()
 
     # 2. Restore from DB if records exist
     restored_from_db = False

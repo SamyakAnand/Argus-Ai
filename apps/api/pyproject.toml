@@ -12,6 +12,7 @@ dependencies = [
   "pydantic>=2.8,<3",
   "python-multipart>=0.0.9",
   "openpyxl>=3.1",
+  "pyarrow>=16",
   "sqlalchemy>=2.0,<3",
   "psycopg[binary]>=3.2",
   "pgvector>=0.3",

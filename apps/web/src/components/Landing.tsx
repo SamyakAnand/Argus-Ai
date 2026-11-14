@@ -33,7 +33,6 @@ const flow = [
 ];
 
 export function Landing() {
-  const reduceMotion = useReducedMotion();
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [apiState, setApiState] = useState<"checking" | "available" | "unavailable">("checking");
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
@@ -63,14 +62,6 @@ export function Landing() {
     } finally { setRunning(false); }
   };
 
-  const Reveal = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => <motion.div
-    className={className}
-    initial={reduceMotion ? false : { opacity: 0, y: 18 }}
-    whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true, amount: 0.15 }}
-    transition={{ duration: reduceMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
-  >{children}</motion.div>;
-
   return <main className="argus-landing">
     <header className="argus-landing-header">
       <Link className="argus-public-brand" href="/" aria-label="ARGUS AI home"><span><Eye size={20} weight="duotone" /></span><strong>ARGUS</strong><small>AI</small></Link>
@@ -80,10 +71,10 @@ export function Landing() {
 
     <section className="argus-hero">
       <div className="argus-hero-copy">
-        <div className="argus-overline"><span />MULTIMODAL KNOWLEDGE INTELLIGENCE</div>
+        <div className="argus-overline"><span />EVIDENCE-GROUNDED ANALYTICS</div>
         <h1>Your data has answers.<br /><em>ARGUS finds the evidence.</em></h1>
         <p>Turn complex information into intelligence you can inspect. Start with the data-analysis workspace today; expand toward multimodal retrieval with evidence at its core.</p>
-        <div className="argus-hero-actions"><Link className="argus-button-primary" href="/workspace">Explore intelligence <ArrowRight size={16} /></Link><a className="argus-button-quiet" href="#how-it-works">See how it works <ArrowDown size={15} /></a></div>
+        <div className="argus-hero-actions"><Link className="argus-button-primary" href="/overview">Explore the workspace <ArrowRight size={16} /></Link><Link className="argus-button-quiet" href="/workspace">Try structured data analysis</Link><a className="argus-button-quiet" href="#how-it-works">See how it works <ArrowDown size={15} /></a></div>
         <div className="argus-hero-status"><span className={`argus-api-state ${apiState}`}><i />{apiState === "available" ? "Local analysis API connected" : apiState === "unavailable" ? "Local analysis API unavailable" : "Checking local API"}</span><span>Prototype · Clerk development sign-in</span></div>
       </div>
       <div className="argus-hero-scene-wrap"><InsightCore /><div className="argus-scene-index">A / 01 <span>OBSERVE · CONNECT · VERIFY</span></div></div>
@@ -117,6 +108,11 @@ export function Landing() {
 
     <section className="argus-closing"><div><span className="argus-eyebrow">THE ARGUS PRINCIPLE</span><h2>Do more than find information.<br /><em>Reveal the evidence behind it.</em></h2><p>Start with the working knowledge workspace and inspect the current prototype’s boundaries.</p><Link className="argus-button-primary" href="/overview">Enter ARGUS AI <ArrowRight size={16} /></Link></div><div className="argus-closing-mark"><Eye size={86} weight="thin" /><span>OBSERVE<br />TRACE<br />VERIFY</span></div></section>
 
-    <footer className="argus-footer"><Link className="argus-public-brand" href="/"><span><Eye size={18} weight="duotone" /></span><strong>ARGUS</strong><small>AI</small></Link><p>Enterprise Multimodal Knowledge Intelligence Platform<br /><span>Current build: local analytics prototype</span></p><Link href="/settings">System status <ArrowUpRight size={14} /></Link></footer>
+    <footer className="argus-footer"><Link className="argus-public-brand" href="/"><span><Eye size={18} weight="duotone" /></span><strong>ARGUS</strong><small>AI</small></Link><p>Evidence-grounded analytics workspace<br /><span>Current build: local analytics prototype</span></p><Link href="/settings">System status <ArrowUpRight size={14} /></Link></footer>
   </main>;
+}
+
+function Reveal({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const reduceMotion = useReducedMotion();
+  return <motion.div className={className} initial={reduceMotion ? false : { opacity: 0, y: 18 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true, amount: 0.15 }} transition={{ duration: reduceMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}>{children}</motion.div>;
 }

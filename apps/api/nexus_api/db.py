@@ -20,7 +20,7 @@ from sqlalchemy import (
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from sqlalchemy.types import TypeDecorator
 
-# Determine DB URL: prefer DATABASE_URL if provided, else fallback to SQLite
+# SQLite is available only when explicitly selected (for local development/tests).
 DATA_DIR = Path(os.getenv("NEXUS_DATA_DIR", "/tmp/nexus-data" if os.getenv("VERCEL") else "data"))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_SQLITE_URL = f"sqlite:///{DATA_DIR.resolve()}/nexus.db"
@@ -151,15 +151,11 @@ class InquiryRecord(Base):
     created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
 
 
-# Engine setup with fallback
+# Engine setup fails visibly when the configured dialect cannot be constructed.
 def _get_engine():
-    try:
-        if DATABASE_URL.startswith("sqlite"):
-            return create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-        return create_engine(DATABASE_URL, pool_pre_ping=True)
-    except Exception as exc:
-        # Fallback to local SQLite if connection to Postgres fails
-        return create_engine(DEFAULT_SQLITE_URL, connect_args={"check_same_thread": False})
+    if DATABASE_URL.startswith("sqlite"):
+        return create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+    return create_engine(DATABASE_URL, pool_pre_ping=True)
 
 
 engine = _get_engine()
@@ -168,14 +164,7 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 def init_db() -> None:
     """Initialize database tables."""
-    global engine, SessionLocal
-    try:
-        Base.metadata.create_all(bind=engine)
-    except Exception as exc:
-        # If external database fails, fallback to SQLite
-        engine = create_engine(DEFAULT_SQLITE_URL, connect_args={"check_same_thread": False})
-        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        Base.metadata.create_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
 
 def get_db() -> Generator[Session, None, None]:

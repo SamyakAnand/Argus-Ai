@@ -240,3 +240,98 @@ a { color: inherit; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+/* Liquid glass: restrained translucent layers with a cool, refracted edge. */
+.argus-shell {
+  background:
+    radial-gradient(ellipse at 72% 10%, rgba(40, 116, 135, .14), transparent 38%),
+    radial-gradient(ellipse at 48% 66%, rgba(91, 85, 148, .09), transparent 42%),
+    var(--argus-bg);
+}
+.argus-sidebar {
+  z-index: 6;
+  border-right-color: rgba(190, 224, 239, .16);
+  background: rgba(8, 15, 23, .82);
+  box-shadow: inset -1px 0 rgba(236, 250, 255, .035), 12px 0 36px rgba(0, 0, 0, .12);
+  -webkit-backdrop-filter: blur(22px) saturate(1.28);
+  backdrop-filter: blur(22px) saturate(1.28);
+}
+.argus-topbar {
+  border-bottom-color: rgba(195, 229, 240, .17);
+  background: rgba(8, 15, 23, .72);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .08);
+  -webkit-backdrop-filter: blur(22px) saturate(1.38);
+  backdrop-filter: blur(22px) saturate(1.38);
+}
+.argus-panel {
+  border-color: rgba(194, 228, 241, .17);
+  border-radius: 12px;
+  background: linear-gradient(145deg, rgba(211, 242, 255, .075), rgba(119, 161, 190, .035) 46%, rgba(151, 137, 205, .045)), rgba(12, 20, 30, .78);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .11), 0 14px 34px rgba(0, 0, 0, .16);
+  -webkit-backdrop-filter: blur(16px) saturate(1.24);
+  backdrop-filter: blur(16px) saturate(1.24);
+}
+.argus-search-page { position: relative; isolation: isolate; }
+.argus-search-page::before {
+  position: absolute;
+  z-index: -1;
+  top: -54px;
+  right: -44px;
+  left: -44px;
+  height: 360px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 27% 42%, rgba(37, 168, 174, .13), transparent 43%), radial-gradient(ellipse at 76% 12%, rgba(113, 99, 192, .14), transparent 43%);
+  filter: blur(22px);
+  content: "";
+  pointer-events: none;
+}
+.argus-search-callout { border: 1px solid rgba(142, 219, 224, .2); border-radius: 11px; padding: 12px 14px; background: linear-gradient(115deg, rgba(121, 207, 211, .07), rgba(106, 144, 179, .025) 60%, transparent); box-shadow: inset 0 1px rgba(255, 255, 255, .06); -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px); }
+.argus-query-form {
+  position: relative;
+  border-color: rgba(209, 242, 252, .26);
+  border-radius: 16px;
+  padding: 19px;
+  background: linear-gradient(145deg, rgba(211, 243, 255, .12), rgba(120, 161, 190, .055) 48%, rgba(151, 137, 205, .075)), rgba(10, 18, 27, .76);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .19), inset 0 -1px rgba(158, 220, 232, .06), 0 20px 48px rgba(0, 0, 0, .25);
+  -webkit-backdrop-filter: blur(26px) saturate(1.42);
+  backdrop-filter: blur(26px) saturate(1.42);
+}
+.argus-query-form textarea {
+  border-color: rgba(190, 222, 236, .17);
+  border-radius: 9px;
+  background: rgba(5, 11, 18, .48);
+}
+.argus-query-suggestions { display: flex; align-items: center; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.argus-query-suggestions > span { margin-right: 2px; color: #91aab6; font-size: 8px; }
+.argus-query-suggestions button { min-height: 28px; border: 1px solid rgba(190, 222, 236, .15); border-radius: 999px; padding: 0 10px; color: #b4c8d0; background: rgba(173, 218, 231, .045); font-size: 8px; cursor: pointer; transition: color .2s ease, border-color .2s ease, background-color .2s ease; }
+.argus-query-suggestions button:hover { border-color: rgba(122, 220, 221, .45); color: #e2f6f4; background: rgba(122, 220, 221, .1); }
+.argus-query-suggestions button:focus-visible { outline: 2px solid var(--argus-cyan); outline-offset: 3px; }
+.argus-analysis-result {
+  border-color: rgba(139, 229, 219, .3);
+  border-radius: 16px;
+  background: linear-gradient(145deg, rgba(186, 238, 237, .085), rgba(112, 158, 184, .045) 48%, rgba(115, 105, 161, .055)), rgba(10, 18, 27, .76);
+  box-shadow: inset 0 1px rgba(255, 255, 255, .15), 0 18px 45px rgba(0, 0, 0, .2);
+  -webkit-backdrop-filter: blur(20px) saturate(1.32);
+  backdrop-filter: blur(20px) saturate(1.32);
+}
+.argus-analysis-result .argus-panel { background: rgba(7, 14, 21, .36); box-shadow: inset 0 1px rgba(255, 255, 255, .07); }
+.argus-evidence-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 13px 0 4px; border-bottom: 1px solid rgba(197, 229, 239, .12); padding-bottom: 12px; color: #9bb5c1; font-size: 9px; }
+.argus-evidence-toolbar .argus-button-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 34px; border-color: rgba(188, 224, 238, .23); border-radius: 9px; background: rgba(188, 224, 238, .075); }
+.argus-evidence-toolbar .argus-button-secondary:hover { border-color: rgba(131, 220, 221, .55); background: rgba(131, 220, 221, .12); }
+.argus-evidence-toolbar .argus-button-secondary:focus-visible { outline: 2px solid var(--argus-cyan); outline-offset: 3px; }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .argus-sidebar { background: #0b141e; }
+  .argus-topbar { background: #0a1018; }
+  .argus-panel, .argus-query-form, .argus-analysis-result { background-color: #101a26; }
+}
+@media (max-width: 850px) {
+  .argus-sidebar { background: rgba(8, 15, 23, .94); }
+  .argus-panel { -webkit-backdrop-filter: blur(10px) saturate(1.12); backdrop-filter: blur(10px) saturate(1.12); }
+  .argus-query-form, .argus-analysis-result { -webkit-backdrop-filter: blur(14px) saturate(1.2); backdrop-filter: blur(14px) saturate(1.2); }
+}
+@media (max-width: 620px) {
+  .argus-evidence-toolbar { align-items: flex-start; flex-direction: column; }
+  .argus-evidence-toolbar .argus-button-secondary { width: 100%; }
+  .argus-query-suggestions { flex-wrap: nowrap; overflow-x: auto; padding: 3px 1px 7px; scrollbar-width: thin; }
+  .argus-query-suggestions > span, .argus-query-suggestions button { flex: none; }
+}
