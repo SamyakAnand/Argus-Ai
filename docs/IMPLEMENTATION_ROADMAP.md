@@ -27,9 +27,9 @@ This roadmap follows the findings in [ENGINEERING_AUDIT.md](ENGINEERING_AUDIT.md
 - Enforce permissions before retrieval results enter bounded context; fuse rankings with deterministic RRF and add reranking only behind measured need.
 - Validate citation membership and source spans; add claim support/contradiction review and abstention behavior. Preserve explicit limitations where semantic support cannot be established.
 
-## Phase 4 — Unified provider and analytics controls
+## Phase 4 — EURI-only provider and analytics controls
 
-- Consolidate providers behind one typed gateway with redacted logs, timeouts, bounded retries, circuit behavior, token/cost accounting and distinct configured/reachable/inference-tested states.
+- Keep EURI as the sole model API, with one fixed model, redacted logs, timeouts, bounded retries, and distinct configured/reachable/inference-tested states. Never fall back to another provider.
 - Preserve deterministic analytics; add a strict tool registry, SQL AST validation, execution limits, reproducible traces and dataset-version provenance.
 - Remove unused dependencies/status claims only after verifying no active path depends on them.
 

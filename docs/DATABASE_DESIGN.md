@@ -1,6 +1,6 @@
 # Database Design
 
-**Status:** Proposed target schema. It is not the current schema. Current ORM/DDL differences are a blocker documented in [PROJECT_AUDIT.md](PROJECT_AUDIT.md).
+**Status:** Proposed target schema. It is not the current schema. Current ORM/DDL differences are a blocker documented in [ENGINEERING_AUDIT.md](ENGINEERING_AUDIT.md).
 
 ## Entity relationships
 

@@ -29,7 +29,6 @@ from nexus_api.analysis import (
     validate_read_only_sql,
 )
 from nexus_api.demo import build_demo_dataset
-from nexus_api.gateway import OmniRouteGateway
 from nexus_api.profiling import (
     build_dataset_overview,
     build_overview_visualizations,
@@ -190,7 +189,8 @@ def test_acceptance_6_invalid_data():
 # =============================================================================
 def test_acceptance_7_remote_model_unavailable(sample_100_row_dataset: pd.DataFrame):
     """TEST 7 — Simulate remote model outage; deterministic profiling and charts must still succeed."""
-    with patch("nexus_api.llm.call_llm", return_value=(None, 0, 0.0)):
+    with patch("nexus_api.analysis.get_configured_provider", return_value={"enabled": True, "provider": "euri", "model": "gpt-5.4-mini"}), \
+         patch("nexus_api.llm.call_llm", return_value=(None, 0, None)):
         result = run_analysis("test_degraded", sample_100_row_dataset, "Give me an overview of this data.")
 
         assert result.degraded_mode is True

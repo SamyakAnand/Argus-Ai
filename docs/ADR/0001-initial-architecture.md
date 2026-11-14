@@ -32,4 +32,4 @@ This architecture requires migration reconciliation, worker/object storage, auth
 
 ## Open decisions
 
-Identity provider and tenant admin roles; object-store/queue vendor; supported formats and retention; OCR/parser selection; approved Gemini/NVIDIA model and account quotas; embedding model/dimension; regulatory controls and data residency; human review requirements for faithfulness evaluation.
+Identity provider and tenant admin roles; object-store/queue vendor; supported formats and retention; OCR/parser selection; EURI API access, fixed model and account quotas; embedding model/dimension; regulatory controls and data residency; human review requirements for faithfulness evaluation.

@@ -127,7 +127,7 @@ def test_ask_when_provider_is_disabled_returns_evidence_not_a_fabricated_answer(
     monkeypatch.setattr(knowledge, "DATA_DIR", tmp_path)
     monkeypatch.setattr(knowledge, "DB_PATH", tmp_path / "knowledge.sqlite3")
     monkeypatch.setenv("ARGUS_KNOWLEDGE_GENERATION_ENABLED", "true")
-    monkeypatch.setattr(knowledge.gateway, "get_active_provider", lambda: {"enabled": False, "provider": "deterministic_fallback", "model": "deterministic"})
+    monkeypatch.setattr(knowledge.gateway, "get_active_provider", lambda: {"enabled": False, "provider": "euri", "model": "gpt-5.4-mini"})
     client.post("/knowledge/documents", files={"file": ("travel.txt", b"Team travel requires manager approval.", "text/plain")})
     response = client.post("/knowledge/ask", json={"question": "Who approval for team travel?"})
     assert response.status_code == 200
@@ -135,7 +135,7 @@ def test_ask_when_provider_is_disabled_returns_evidence_not_a_fabricated_answer(
     assert result["status"] == "evidence_only"
     assert result["answer"] is None
     assert result["evidence"][0]["source"] == "travel.txt"
-    assert "no model provider is configured" in result["explanation"].lower()
+    assert "euri api key is not configured" in result["explanation"].lower()
 
 
 def test_ask_abstains_when_no_usable_passages_are_retrieved(tmp_path, monkeypatch):
@@ -274,19 +274,20 @@ def test_retrieval_empty_terms_and_tie_order_are_deterministic(tmp_path, monkeyp
     assert [item["chunk_id"] for item in first] == [item["chunk_id"] for item in second]
 
 
-def test_provider_failure_logs_never_include_secret_url_query(caplog, monkeypatch):
-    secret = "do-not-log-this-provider-secret"
-    monkeypatch.setattr(gateway, "nvidia_key", secret)
-    monkeypatch.setattr(gateway, "nvidia_base_url", "https://provider.invalid/v1")
-    monkeypatch.setattr(gateway, "nvidia_model", "test-model")
-    monkeypatch.setattr(gateway, "gemini_key", "")
+def test_provider_failure_logs_never_include_api_key(caplog, monkeypatch):
+    secret = "euri-test-secret"
+    monkeypatch.setattr(gateway, "api_key", secret)
     monkeypatch.setattr(gateway, "max_retries", 0)
-    request = httpx.Request("POST", f"https://provider.invalid/v1?key={secret}")
-    response = httpx.Response(401, request=request)
     def fail_call(**kwargs):
-        raise httpx.HTTPStatusError("private URL detail", request=request, response=response)
-    monkeypatch.setattr(gateway, "_call_openai_compatible", fail_call)
-    with caplog.at_level("WARNING", logger="nexus.gateway"):
+        request = httpx.Request("POST", kwargs["url"], headers=kwargs["headers"])
+        response = httpx.Response(401, request=request)
+        raise httpx.HTTPStatusError(f"provider rejected {secret}", request=request, response=response)
+    monkeypatch.setattr("nexus_api.gateway.httpx.Client", lambda **kwargs: type("Client", (), {
+        "__enter__": lambda self: self,
+        "__exit__": lambda self, *args: None,
+        "post": lambda self, url, **kwargs: fail_call(url=url, **kwargs),
+    })())
+    with caplog.at_level("WARNING", logger="argus.euri"):
         result = gateway.generate_chat_completion([], json_mode=True)
     assert result[0] is None
     assert secret not in caplog.text

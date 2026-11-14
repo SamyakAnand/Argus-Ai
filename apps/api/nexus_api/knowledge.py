@@ -323,8 +323,8 @@ def answer_question(question: str, passage_limit: int | None = None, principal: 
     trace = [{"stage": "lexical_retrieval", "status": "completed" if selected else "empty", "duration_ms": retrieve_ms,
               "passages": len(selected), "context_char_limit": context_limit}]
     provider_cfg = gateway.get_active_provider()
-    provider = str(provider_cfg.get("provider", "deterministic_fallback"))
-    model = str(provider_cfg.get("model", "deterministic"))
+    provider = str(provider_cfg.get("provider", "euri"))
+    model = str(provider_cfg.get("model", "gpt-5.4-mini"))
     base = {"question": question, "answer": None, "supported_facts": [], "inferences": [], "conflicts": [],
             "unanswered_questions": [], "rejected_claims": [], "provider": provider, "model": model,
             "retrieval": {"method": "lexical_term_frequency", "max_passages": max_passages,
@@ -341,7 +341,7 @@ def answer_question(question: str, passage_limit: int | None = None, principal: 
                 "citation_validation": {"valid": True, "accepted_claims": 0, "rejected_claims": 0,
                                         "note": "No generated claims to validate."}}
     if not provider_cfg.get("enabled"):
-        return {**base, "status": "evidence_only", "explanation": "No model provider is configured. Retrieved evidence is shown without a generated answer.",
+        return {**base, "status": "evidence_only", "explanation": "The EURI API key is not configured. Retrieved evidence is shown without a generated answer.",
                 "citation_validation": {"valid": True, "accepted_claims": 0, "rejected_claims": 0,
                                         "note": "No generated claims to validate."}}
 

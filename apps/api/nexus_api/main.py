@@ -285,6 +285,7 @@ def health() -> dict[str, Any]:
         ],
         "model_provider": provider["provider"],
         "active_model": provider["model"],
+        "model_configured": provider["enabled"],
         "langgraph_runtime": "active",
     }
 

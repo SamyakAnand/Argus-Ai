@@ -17,7 +17,7 @@ const destinations = [
   { href: "/graph", label: "Knowledge Graph", icon: Graph, detail: "Source lineage and relationships" },
   { href: "/sessions", label: "Research Sessions", icon: Database, detail: "Saved in this browser" },
   { href: "/evaluation", label: "Evaluation Lab", icon: Gauge, detail: "Deterministic fixture evaluation" },
-  { href: "/models", label: "Model Observatory", icon: Cpu, detail: "Configured provider status" },
+  { href: "/models", label: "EURI API", icon: Cpu, detail: "Single AI provider status" },
   { href: "/settings", label: "Settings", icon: Gear, detail: "Prototype configuration" },
 ];
 

@@ -86,4 +86,4 @@ Deterministic remediation routines:
 Cross-source schemas are evaluated for candidate entity relationships (e.g. matching `customer_id` across sales CSV and CRM REST API) using synonym clustering and value-set overlap.
 
 ### Stage 6: Autonomous Analytical Execution
-The question and schema-bound semantic context are dispatched to the LangGraph execution graph, utilizing high-speed free LLM inference (Groq Llama-3.3-70B, Google Gemini Flash, or Ollama) with deterministic statistical verification.
+The question is analyzed with deterministic statistical tools. When narrative synthesis is enabled and the server-side EURI key is configured, ARGUS sends verified findings and aggregates to the single fixed EURI model; it never switches providers.

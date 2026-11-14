@@ -1,6 +1,6 @@
 # High-Level Design — Nexus Intelligence Engine
 
-**Status:** Proposed target architecture; not a description of currently implemented production behavior. See [PROJECT_AUDIT.md](PROJECT_AUDIT.md).
+**Status:** Proposed target architecture; not a description of currently implemented production behavior. See [ENGINEERING_AUDIT.md](ENGINEERING_AUDIT.md).
 
 ## Goals
 

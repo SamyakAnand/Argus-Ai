@@ -11,8 +11,7 @@ import pandas as pd
 from scipy.stats import linregress
 from sklearn.ensemble import IsolationForest
 
-from .gateway import gateway
-from .llm import get_configured_provider, plan_with_llm, synthesize_with_llm
+from .llm import get_configured_provider, synthesize_with_llm
 from .profiling import build_dataset_overview, profile_frame
 from .schemas import (
     AnalysisPlan,
@@ -189,7 +188,7 @@ def _run_analysis_core(
     run_id = str(uuid.uuid4())
     trace: list[TraceStep] = []
     total_tokens = 0
-    total_cost = 0.0
+    total_cost: float | None = 0.0
     active_model_name: str | None = None
     degraded_mode = False
 
@@ -528,7 +527,7 @@ def _run_analysis_core(
         )]
 
     # =========================================================================
-    # RESPONSE SYNTHESIS: REMOTE MODEL (NVIDIA / OMNIROUTE / GEMINI) OR DEGRADED
+    # RESPONSE SYNTHESIS: EURI or deterministic fallback
     # =========================================================================
     deterministic_summary = " ".join(f.detail for f in findings[:2])
     answer = deterministic_summary
@@ -547,7 +546,7 @@ def _run_analysis_core(
             else:
                 answer = synth_answer
             total_tokens += synth_tokens
-            total_cost += synth_cost
+            total_cost = total_cost + synth_cost if total_cost is not None and synth_cost is not None else None
             active_model_name = provider_info["model"]
         else:
             # Model failed or timed out: Graceful Degraded Fallback

@@ -423,6 +423,7 @@ export type APIHealth = {
   capabilities?: string[];
   model_provider?: string;
   active_model?: string;
+  model_configured?: boolean;
   langgraph_runtime?: string;
 };
 

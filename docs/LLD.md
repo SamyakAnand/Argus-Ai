@@ -10,7 +10,7 @@ apps/api/nexus_api/
   auth/                identity, tenant context, policy checks
   ingestion/           job service, parser registry, normalization, chunking
   retrieval/           lexical, dense, RRF, reranking, evidence packing
-  providers/           protocol + Gemini/NVIDIA adapters + redaction
+  providers/           single EURI gateway + credential redaction
   persistence/         SQLAlchemy models, repositories, transactions
   observability/       trace context, structured logging, metrics
   evaluation/           dataset loader, deterministic metrics, report writer
